@@ -1,0 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --bg: #070816;
+  --panel: rgba(13, 14, 34, 0.84);
+  --panel-border: rgba(255, 255, 255, 0.08);
+  --text: #e5eefb;
+  --muted: #96a6c8;
+  --accent: #a855f7;
+  --accent-2: #7c3aed;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  font-family: 'Manrope', sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(168, 85, 247, 0.18), transparent 28%),
+    radial-gradient(circle at top right, rgba(99, 102, 241, 0.22), transparent 30%),
+    linear-gradient(180deg, #070816 0%, #11112a 100%);
+  color: var(--text);
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.36), rgba(0, 0, 0, 0.05));
+}
+
+#root {
+  min-height: 100vh;
+}
+
+::selection {
+  background: rgba(168, 85, 247, 0.28);
+  color: white;
+}
+
+@layer components {
+  .glass-panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    box-shadow: 0 18px 60px rgba(7, 10, 24, 0.44);
+    backdrop-filter: blur(18px);
+  }
+
+  .section-title {
+    font-family: 'Space Grotesk', sans-serif;
+    letter-spacing: -0.03em;
+  }
+
+  .frost-input {
+    @apply w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-400 outline-none transition focus:border-violet-400/60 focus:bg-white/10 focus:ring-2 focus:ring-violet-400/20;
+  }
+
+  .frost-button {
+    @apply inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-violet-500 via-fuchsia-500 to-indigo-500 px-5 py-3 font-semibold text-white shadow-lg shadow-violet-500/20 transition hover:scale-[1.01] hover:shadow-violet-500/30 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .secondary-button {
+    @apply inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-5 py-3 font-semibold text-white transition hover:border-violet-400/30 hover:bg-white/10;
+  }
+}
