@@ -47,7 +47,7 @@ async def execute_question(payload: DSAExecuteRequest, current_user=Depends(get_
     assessment_id = payload.assessment_id
     user_id = current_user["id"] if "id" in current_user else str(current_user["_id"])
     try:
-        question = await run_code_for_question(payload.question_id, payload.language, payload.code, hidden=False)
+        question = run_code_for_question(payload.question_id, payload.language, payload.code, hidden=False)
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
 

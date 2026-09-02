@@ -248,7 +248,8 @@ async def submit_assessment(assessment_id: str, user_id: str, attempts: List[Dic
     if not assessment:
         raise ValueError("Assessment not found")
 
-    selected_questions = await get_questions_by_ids(assessment["question_ids"])
+    question_ids = assessment.get("question_ids") or assessment.get("questions") or []
+    selected_questions = await get_questions_by_ids(question_ids)
     attempt_map = {attempt["question_id"]: attempt for attempt in attempts}
     question_results: List[Dict[str, Any]] = []
 

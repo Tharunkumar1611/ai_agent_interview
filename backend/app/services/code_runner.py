@@ -163,15 +163,15 @@ def _javascript_harness(question: Dict[str, Any], code: str, test_cases: List[Di
     function_name = question["function_name"]
 
     if topic == "Trees":
-        call_expression = f"{function_name}(buildTree(case.inputs.level_order))"
+        call_expression = f"{function_name}(buildTree(caseItem.inputs.level_order))"
     elif topic == "Arrays":
-        call_expression = f"{function_name}(case.inputs.nums)"
+        call_expression = f"{function_name}(caseItem.inputs.nums)"
     elif topic == "Strings":
-        call_expression = f"{function_name}(case.inputs.s)"
+        call_expression = f"{function_name}(caseItem.inputs.s)"
     elif topic == "Graphs":
-        call_expression = f"{function_name}(case.inputs.grid)"
+        call_expression = f"{function_name}(caseItem.inputs.grid)"
     else:
-        call_expression = f"{function_name}(case.inputs.coins, case.inputs.amount)"
+        call_expression = f"{function_name}(caseItem.inputs.coins, caseItem.inputs.amount)"
 
     return "\n".join(
         part
