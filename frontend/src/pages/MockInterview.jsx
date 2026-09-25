@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -32,6 +32,8 @@ export default function MockInterview() {
   const [error, setError] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const recognitionRef = useRef(null);
+  const reportRef = useRef(null);
 
   const currentQuestion = session?.questions?.[questionIndex] || null;
   const progressPercent = useMemo(() => {
@@ -64,6 +66,7 @@ export default function MockInterview() {
     }
 
     const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
     recognition.lang = 'en-US';
     recognition.continuous = false;
     recognition.interimResults = true;
@@ -82,19 +85,17 @@ export default function MockInterview() {
       setIsListening(false);
       setError('Voice capture was interrupted. You can still type your answer.');
     };
-    recognition.onend = () => setIsListening(false);
+    recognition.onend = () => {
+      recognitionRef.current = null;
+      setIsListening(false);
+    };
     recognition.start();
     setMessage('Listening for your answer...');
   };
 
   const handleStopVoiceInput = () => {
     if (typeof window === 'undefined') return;
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-    const recognition = window.__mockInterviewRecognition;
-    if (recognition) {
-      recognition.stop();
-    }
+    recognitionRef.current?.stop();
   };
 
   const loadHistory = async () => {
@@ -128,9 +129,8 @@ export default function MockInterview() {
     }
   };
 
-  const saveAnswer = async () => {
+  const saveAnswer = async ({ showMessage = true } = {}) => {
     if (!session?.interview_id || !currentQuestion) return;
-    setLoading(true);
     setError('');
     try {
       await submitMockInterviewAnswer({
@@ -141,9 +141,17 @@ export default function MockInterview() {
         answer_duration_seconds: 60,
         confidence: 0.85,
       });
-      setMessage('Answer saved for this question.');
+      if (showMessage) setMessage('Answer saved for this question.');
     } catch (err) {
       setError(err.response?.data?.detail || 'Unable to save answer');
+      throw err;
+    }
+  };
+
+  const handleSaveAnswer = async () => {
+    setLoading(true);
+    try {
+      await saveAnswer();
     } finally {
       setLoading(false);
     }
@@ -152,8 +160,9 @@ export default function MockInterview() {
   const goNext = async () => {
     if (!session?.interview_id) return;
     setLoading(true);
+    setError('');
     try {
-      await saveAnswer();
+      await saveAnswer({ showMessage: false });
       await moveMockInterviewToNext(session.interview_id);
       if (questionIndex < (session.questions.length || 1) - 1) {
         setQuestionIndex((previous) => previous + 1);
@@ -161,7 +170,10 @@ export default function MockInterview() {
       } else {
         const response = await completeMockInterview(session.interview_id);
         setReport(response.data.report);
+        setSession(null);
+        await loadHistory();
         setMessage('Interview completed. Review your report below.');
+        requestAnimationFrame(() => reportRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
       }
     } catch (err) {
       setError(err.response?.data?.detail || 'Unable to move to next question');
@@ -171,12 +183,22 @@ export default function MockInterview() {
   };
 
   const viewReport = async (interviewId) => {
+    setLoading(true);
+    setError('');
     try {
       const response = await loadMockInterviewReport(interviewId);
-      setReport(response.data.interview?.report || null);
+      const loadedReport = response.data.report || response.data.interview?.report || null;
+      if (!loadedReport) {
+        setError('This interview is still in progress. Complete it to generate a report.');
+        return;
+      }
+      setReport(loadedReport);
       setMessage('Loaded previous interview report.');
+      requestAnimationFrame(() => reportRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
     } catch (err) {
       setError(err.response?.data?.detail || 'Unable to load report');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -237,7 +259,7 @@ export default function MockInterview() {
                 <button type="button" onClick={isListening ? handleStopVoiceInput : handleStartVoiceInput} className="secondary-button">
                   {isListening ? 'Stop microphone' : 'Start microphone'}
                 </button>
-                <button type="button" onClick={saveAnswer} disabled={loading} className="secondary-button">
+                <button type="button" onClick={handleSaveAnswer} disabled={loading} className="secondary-button">
                   Save answer
                 </button>
                 <button type="button" onClick={goNext} disabled={loading} className="frost-button">
@@ -270,7 +292,7 @@ export default function MockInterview() {
           </div>
 
           {report ? (
-            <div className="glass-panel rounded-[2rem] p-6">
+            <div ref={reportRef} className="glass-panel rounded-[2rem] p-6">
               <p className="text-sm uppercase tracking-[0.28em] text-slate-400">Latest report</p>
               <div className="mt-4 space-y-4">
                 <div className="rounded-[1.2rem] border border-white/10 bg-white/5 p-4">

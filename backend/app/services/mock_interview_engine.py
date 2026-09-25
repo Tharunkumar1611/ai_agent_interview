@@ -365,9 +365,13 @@ async def submit_voice_answer(user_id: str, payload: Dict[str, Any]) -> Dict[str
         "answered_at": datetime.now(timezone.utc),
     }
 
+    # A user can explicitly save and then click "Submit and next". Replace the
+    # answer for that question instead of recording it twice.
+    answers = [item for item in interview.get("answers", []) if item.get("question_id") != answer_entry["question_id"]]
+    answers.append(answer_entry)
     await database.mock_interviews.update_one(
         {"interview_id": payload["interview_id"], "user_id": user_id},
-        {"$push": {"answers": answer_entry}, "$set": {"updated_at": datetime.now(timezone.utc)}},
+        {"$set": {"answers": answers, "updated_at": datetime.now(timezone.utc)}},
     )
     return serialize_mongo_document({"status": "saved", "answer": answer_entry})
 
@@ -377,6 +381,7 @@ async def next_question(user_id: str, interview_id: str) -> Dict[str, Any]:
     interview = await database.mock_interviews.find_one({"interview_id": interview_id, "user_id": user_id})
     if not interview:
         raise ValueError("Interview not found")
+
     return serialize_mongo_document({"status": "ok", "current_progress": len(interview.get("answers", []))})
 
 
@@ -385,6 +390,11 @@ async def complete_mock_interview(user_id: str, interview_id: str, resume_contex
     interview = await database.mock_interviews.find_one({"interview_id": interview_id, "user_id": user_id})
     if not interview:
         raise ValueError("Interview not found")
+
+    # Completion may be retried after a client timeout; preserve the report
+    # that was already generated instead of evaluating the session again.
+    if interview.get("status") == "completed" and interview.get("report"):
+        return serialize_mongo_document({"status": "completed", "report": interview["report"]})
 
     answers = interview.get("answers", [])
     conversation = [
@@ -498,7 +508,14 @@ async def get_interview_report(user_id: str, interview_id: str) -> Dict[str, Any
     interview = await database.mock_interviews.find_one({"interview_id": interview_id, "user_id": user_id})
     if not interview:
         raise ValueError("Interview not found")
-    return {"interview": serialize_mongo_document(interview)}
+    report = interview.get("report")
+    return serialize_mongo_document({
+        "interview_id": interview_id,
+        "status": interview.get("status"),
+        "report": report,
+        # Keep the session available for older frontend clients.
+        "interview": interview,
+    })
 
 
 async def get_user_interview_history(user_id: str) -> List[Dict[str, Any]]:
